@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_restx import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 
@@ -15,6 +15,7 @@ db = SQLAlchemy(app)
 api = Api(app)
 movie_ns = api.namespace('movies')
 director_ns = api.namespace('directors')
+genre_ns = api.namespace('genres')
 
 @movie_ns.route('/')
 class MoviesView(Resource):
@@ -25,9 +26,9 @@ class MoviesView(Resource):
                                                          Director.name.label('director')).join(Genre).join(Director)
         director_id = request.args.get('director_id')
         genre_id = request.args.get('genre_id')
-        if 'director_id':
+        if director_id:
             movie_with_genre_and_director = movie_with_genre_and_director.filter(Movie.director_id == director_id)
-        if 'genre_id':
+        if genre_id:
             movie_with_genre_and_director = movie_with_genre_and_director.filter(Movie.genre_id == genre_id)
 
         movies_list = movie_with_genre_and_director.all()
@@ -107,6 +108,8 @@ class MovieView(Resource):
         db.session.commit()
 
         return f"Объект с id {movie.id} удален", 204
+
+
 
 
 if __name__ == '__main__':
