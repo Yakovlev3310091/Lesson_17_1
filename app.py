@@ -17,13 +17,21 @@ movie_ns = api.namespace('movies')
 director_ns = api.namespace('directors')
 genre_ns = api.namespace('genres')
 
+def pagination(query, page, page_size):
+    return query.limit(page_size).offset((page - 1) * page_size)
+
 @movie_ns.route('/')
 class MoviesView(Resource):
     def get(self):
-        movie_with_genre_and_director = db.session.query(Movie.id, Movie.title, Movie.description, Movie.rating,
+        movie_with_genre_and_director = db.session.query(Movie.id,
+                                                         Movie.title,
+                                                         Movie.description,
+                                                         Movie.rating,
                                                          Movie.trailer,
                                                          Genre.name.label('genre'),
                                                          Director.name.label('director')).join(Genre).join(Director)
+        page = request.args.get('page', type=int, default=1)
+        page_size = request.args.get('page_size', type=int, default=10)
         director_id = request.args.get('director_id')
         genre_id = request.args.get('genre_id')
         if director_id:
@@ -31,7 +39,9 @@ class MoviesView(Resource):
         if genre_id:
             movie_with_genre_and_director = movie_with_genre_and_director.filter(Movie.genre_id == genre_id)
 
-        movies_list = movie_with_genre_and_director.all()
+        movies_list = movie_with_genre_and_director.limit(page_size).offset((page - 1) * page_size).all()
+        """ закомментирован вариант с вызовом функции"""
+        #movies_list = pagination(movie_with_genre_and_director, page, page_size).all()
 
         return movies_schema.dump(movies_list), 200
 
@@ -46,7 +56,10 @@ class MoviesView(Resource):
 @movie_ns.route('/<int:movie_id>')
 class MovieView(Resource):
     def get(self, movie_id: int):
-        movie = db.session.query(Movie.id, Movie.title, Movie.description, Movie.rating, Movie.trailer,
+        movie = db.session.query(Movie.id,
+                                 Movie.title,
+                                 Movie.description,
+                                 Movie.rating, Movie.trailer,
                                  Genre.name.label('genre'),
                                  Director.name.label('director')).join(Genre).join(Director).filter(
                                  Movie.id == movie_id).first()
@@ -62,17 +75,17 @@ class MovieView(Resource):
         req_json = request.json
         if 'title' in req_json:
             movie.title = req_json['title']
-        elif 'description' in req_json:
+        if 'description' in req_json:
             movie.description = req_json['description']
-        elif 'trailer' in req_json:
+        if 'trailer' in req_json:
             movie.trailer = req_json['trailer']
-        elif 'year' in req_json:
+        if 'year' in req_json:
             movie.year = req_json['year']
-        elif 'rating' in req_json:
+        if 'rating' in req_json:
             movie.rating = req_json['rating']
-        elif 'genre_id' in req_json:
+        if 'genre_id' in req_json:
             movie.genre_id = req_json['genre_id']
-        elif 'director_id' in req_json:
+        if 'director_id' in req_json:
             movie.director_id = req_json['director_id']
 
         db.session.add(movie)
@@ -108,8 +121,6 @@ class MovieView(Resource):
         db.session.commit()
 
         return f"Объект с id {movie.id} удален", 204
-
-
 
 
 if __name__ == '__main__':
